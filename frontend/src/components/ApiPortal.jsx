@@ -11,13 +11,16 @@ export default function ApiPortal({ onExportCsv }) {
     setTimeout(() => setCopiedIndex(null), 2000);
   };
 
+  const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
+  const apiDocsUrl = apiBase.replace('/api/v1', '') + '/docs';
+
   const codeSnippets = [
     {
       title: 'Python (MoSPI Data Pipeline Integration)',
       language: 'python',
       code: `import requests
 
-url = "http://127.0.0.1:8000/api/v1/apix/summary"
+url = "${apiBase}/apix/summary"
 headers = {"X-MoSPI-API-Key": "${apiKey}"}
 
 response = requests.get(url, headers=headers)
@@ -29,7 +32,7 @@ print(f"Fisher Ideal Index: {data['apix_national']}, CPI Benchmark: {data['cpi_t
     {
       title: 'cURL Request (RBI Macroeconomic Model)',
       language: 'bash',
-      code: `curl -X GET "http://127.0.0.1:8000/api/v1/apix/history?days=30" \\
+      code: `curl -X GET "${apiBase}/apix/history?days=30" \\
      -H "Accept: application/json" \\
      -H "X-MoSPI-API-Key: ${apiKey}"`
     }
@@ -59,7 +62,7 @@ print(f"Fisher Ideal Index: {data['apix_national']}, CPI Benchmark: {data['cpi_t
           </button>
           
           <a
-            href="http://127.0.0.1:8000/docs"
+            href={apiDocsUrl}
             target="_blank"
             rel="noreferrer"
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-400 text-xs font-semibold border border-slate-700 transition-all"

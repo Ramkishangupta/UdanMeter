@@ -6,17 +6,19 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.core.database import engine, Base, SessionLocal
+from app.core.database import engine, Base, SessionLocal, IS_SQLITE
 from app.api.routes import router
 from app.data_pipeline.repository import data_repository
 
-# 1. Configure Rotating File Logger (Max 5MB per log file, up to 5 backups)
+# 1. Configure Rotating File Logger using environment settings
 LOG_FILE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "apix_server.log")
+
+log_level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
 
 rotating_file_handler = RotatingFileHandler(
     LOG_FILE_PATH,
-    maxBytes=5 * 1024 * 1024, # 5 Megabytes per log file
-    backupCount=5,            # Retain up to 5 archived rotated log files (apix_server.log.1, etc.)
+    maxBytes=settings.LOG_MAX_BYTES,
+    backupCount=settings.LOG_BACKUP_COUNT,
     encoding="utf-8"
 )
 rotating_file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
@@ -25,12 +27,15 @@ stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=log_level,
     handlers=[rotating_file_handler, stream_handler]
 )
 
 logger = logging.getLogger("apix_main")
-logger.info(f"Initializing MoSPI APIx Engine... Server log path: {LOG_FILE_PATH} (Rotating: 5MB x 5 files max)")
+db_type = "SQLite (Local fallback)" if IS_SQLITE else "PostgreSQL (Production Pool)"
+logger.info(f"Initializing MoSPI APIx Engine ({settings.ENVIRONMENT})...")
+logger.info(f"Database Engine: {db_type}")
+logger.info(f"Server log path: {LOG_FILE_PATH} (Rotating: {settings.LOG_MAX_BYTES // (1024*1024)}MB x {settings.LOG_BACKUP_COUNT} backups)")
 
 # 2. Create Database Tables
 Base.metadata.create_all(bind=engine)
@@ -40,6 +45,8 @@ db = SessionLocal()
 try:
     data_repository.initialize_route_weights(db)
     logger.info("DGCA Primary Route Traffic Weights initialized successfully.")
+except Exception as e:
+    logger.error(f"Error seeding route weights: {e}")
 finally:
     db.close()
 
@@ -53,7 +60,7 @@ app = FastAPI(
 # 5. Enable CORS for Frontend UI
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.CORS_ORIGINS if settings.CORS_ORIGINS != ["*"] else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -86,13 +93,15 @@ def root():
     return {
         "title": settings.PROJECT_NAME,
         "version": settings.VERSION,
+        "environment": settings.ENVIRONMENT,
+        "database": db_type,
         "organization": "National Statistical Office (NSO), MoSPI",
         "log_file": LOG_FILE_PATH,
-        "log_rotation": "RotatingFileHandler (5MB x 5 backups max)",
+        "log_rotation": f"RotatingFileHandler ({settings.LOG_MAX_BYTES // (1024*1024)}MB x {settings.LOG_BACKUP_COUNT} backups max)",
         "docs_url": "/docs",
         "api_v1_summary": "/api/v1/apix/summary"
     }
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("app.main:app", host=settings.HOST, port=settings.PORT, reload=(settings.ENVIRONMENT == "development"))

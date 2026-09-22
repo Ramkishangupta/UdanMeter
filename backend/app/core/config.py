@@ -1,13 +1,48 @@
 import os
+from typing import List
+from dotenv import load_dotenv
+
+# Load .env from backend root or system environment
+ENV_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), ".env")
+if os.path.exists(ENV_FILE):
+    load_dotenv(ENV_FILE)
+else:
+    load_dotenv()
 
 class Settings:
-    PROJECT_NAME: str = "MoSPI Real-time Airfare Price Index (APIx) Engine"
-    VERSION: str = "1.0.0"
-    API_V1_STR: str = "/api/v1"
+    PROJECT_NAME: str = os.getenv("PROJECT_NAME", "MoSPI Real-time Airfare Price Index (APIx) Engine")
+    VERSION: str = os.getenv("VERSION", "1.0.0")
+    API_V1_STR: str = os.getenv("API_V1_STR", "/api/v1")
+    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     
-    # SQLite Database URI
+    # Server network settings
+    HOST: str = os.getenv("HOST", "0.0.0.0")
+    PORT: int = int(os.getenv("PORT", 8000))
+    
+    # Logging Configuration
+    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+    LOG_MAX_BYTES: int = int(os.getenv("LOG_MAX_BYTES", 5 * 1024 * 1024)) # 5MB default
+    LOG_BACKUP_COUNT: int = int(os.getenv("LOG_BACKUP_COUNT", 5))
+
+    # CORS Allowed Origins (Comma-separated list or * in development)
+    raw_cors = os.getenv("CORS_ORIGINS", "*")
+    CORS_ORIGINS: List[str] = [origin.strip() for origin in raw_cors.split(",") if origin.strip()]
+
+    # Database URI Setup (PostgreSQL support with fallback to SQLite for local development)
+    raw_db_url = os.getenv("DATABASE_URL", "").strip()
     DB_PATH: str = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "apix_database.db")
-    SQLALCHEMY_DATABASE_URL: str = f"sqlite:///{DB_PATH}"
+    
+    if raw_db_url:
+        # Normalize Render/Heroku/Neon/Supabase 'postgres://' or standard 'postgresql://' to 'postgresql+psycopg2://'
+        if raw_db_url.startswith("postgres://"):
+            SQLALCHEMY_DATABASE_URL: str = raw_db_url.replace("postgres://", "postgresql+psycopg2://", 1)
+        elif raw_db_url.startswith("postgresql://") and not raw_db_url.startswith("postgresql+"):
+            SQLALCHEMY_DATABASE_URL: str = raw_db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+        else:
+            SQLALCHEMY_DATABASE_URL: str = raw_db_url
+    else:
+        # Local fallback SQLite database
+        SQLALCHEMY_DATABASE_URL: str = f"sqlite:///{DB_PATH}"
 
     # DGCA Primary City Pairs Basket
     CITY_PAIRS = [
