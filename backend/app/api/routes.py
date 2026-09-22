@@ -164,22 +164,34 @@ def trigger_scrape_job(db: Session = Depends(get_db)):
 
 @router.get("/export/csv")
 def export_csv(db: Session = Depends(get_db)):
-    """Exports cleaned airfare database quotes as downloadable CSV."""
-    logger.info("[EXPORT] GET /export/csv - Exporting cleaned quotes CSV")
-    cleaned = ensure_quotes_available(db)
+    """Exports the latest scrape batch cleaned quotes as downloadable CSV."""
+    logger.info("[EXPORT] GET /export/csv - Exporting latest batch cleaned quotes CSV")
+    from app.models.database import CleanedAirfareQuote
+    
+    # Only export the LATEST scrape batch (last 24 hours) — keeps file small & useful
+    cutoff = datetime.utcnow() - timedelta(hours=24)
+    latest_cleaned = db.query(CleanedAirfareQuote).filter(
+        CleanedAirfareQuote.scraped_at >= cutoff,
+        CleanedAirfareQuote.is_outlier == False
+    ).order_by(CleanedAirfareQuote.scraped_at.desc()).all()
+
+    if not latest_cleaned:
+        latest_cleaned = ensure_quotes_available(db)
+
     data = [{
-        "scraped_at": q.scraped_at.strftime("%Y-%m-%d %H:%M:%S"),
+        "scraped_at": q.scraped_at.strftime("%Y-%m-%d %H:%M:%S") if q.scraped_at else "",
         "carrier": q.carrier,
         "source": q.source,
         "origin": q.origin,
         "destination": q.destination,
         "advance_days": q.advance_days,
-        "base_fare": q.base_fare,
-        "taxes_fees": q.taxes_fees,
-        "convenience_fee": q.convenience_fee,
-        "total_fare": q.total_fare,
+        "base_fare": round(q.base_fare, 2),
+        "taxes_fees": round(q.taxes_fees, 2),
+        "total_fare": round(q.total_fare, 2),
         "is_outlier": q.is_outlier
-    } for q in cleaned]
+    } for q in latest_cleaned]
+
+    logger.info(f"[EXPORT] Exporting {len(data)} quotes (last 24h batch) to CSV")
 
     df = pd.DataFrame(data)
     stream = io.StringIO()
@@ -188,3 +200,5 @@ def export_csv(db: Session = Depends(get_db)):
     response = Response(content=stream.getvalue(), media_type="text/csv")
     response.headers["Content-Disposition"] = "attachment; filename=mospi_apix_airfare_quotes.csv"
     return response
+
+
