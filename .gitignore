@@ -1,0 +1,23 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+
+# Environment
+.env
+*.env
+
+# Database (local dev only)
+*.db
+*.sqlite3
+
+# Logs
+*.log
+*.log.*
+
+# Node
+node_modules/
+frontend/dist/
