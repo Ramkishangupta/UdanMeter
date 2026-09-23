@@ -31,15 +31,15 @@ class DataRepository:
         for q in quotes:
             raw_item = RawAirfareQuote(
                 scraped_at=q.get("scraped_at", datetime.utcnow()),
-                source=q.get("source"),
-                origin=q.get("origin"),
-                destination=q.get("destination"),
-                flight_number=q.get("flight_number", "6E-101"),
-                carrier=q.get("carrier"),
+                source=str(q.get("source")),
+                origin=str(q.get("origin")),
+                destination=str(q.get("destination")),
+                flight_number=str(q.get("flight_number", "6E-101")),
+                carrier=str(q.get("carrier")),
                 departure_date=q.get("departure_date"),
-                advance_days=q.get("advance_days"),
-                raw_fare=q.get("total_fare"),
-                currency=q.get("currency", "INR"),
+                advance_days=int(q.get("advance_days")),
+                raw_fare=float(q.get("total_fare")),
+                currency=str(q.get("currency", "INR")),
                 scraped_status="SUCCESS"
             )
             raw_models.append(raw_item)
@@ -52,20 +52,20 @@ class DataRepository:
         cleaned_models = []
         for q in quotes:
             c_item = CleanedAirfareQuote(
-                raw_quote_id=q.get("id"),
+                raw_quote_id=int(q.get("id")) if q.get("id") is not None else None,
                 scraped_at=q.get("scraped_at", datetime.utcnow()),
-                source=q.get("source"),
-                carrier=q.get("carrier"),
-                origin=q.get("origin"),
-                destination=q.get("destination"),
-                advance_days=q.get("advance_days"),
-                base_fare=q.get("base_fare"),
-                taxes_fees=q.get("taxes_fees"),
-                convenience_fee=q.get("convenience_fee"),
-                total_fare=q.get("total_fare"),
-                fare_class=q.get("fare_class", "Economy Standard"),
-                is_outlier=q.get("is_outlier", False),
-                z_score=q.get("z_score", 0.0)
+                source=str(q.get("source")),
+                carrier=str(q.get("carrier")),
+                origin=str(q.get("origin")),
+                destination=str(q.get("destination")),
+                advance_days=int(q.get("advance_days")),
+                base_fare=float(q.get("base_fare")),
+                taxes_fees=float(q.get("taxes_fees")),
+                convenience_fee=float(q.get("convenience_fee")),
+                total_fare=float(q.get("total_fare")),
+                fare_class=str(q.get("fare_class", "Economy Standard")),
+                is_outlier=bool(q.get("is_outlier", False)),
+                z_score=float(q.get("z_score", 0.0))
             )
             cleaned_models.append(c_item)
         db.add_all(cleaned_models)
@@ -87,26 +87,26 @@ class DataRepository:
         idx_date = index_data["date"]
         existing = db.query(ApixDailyIndex).filter(ApixDailyIndex.date == idx_date).first()
         if existing:
-            existing.apix_national = index_data["apix_national"]
-            existing.laspeyres_index = index_data["laspeyres_index"]
-            existing.paasche_index = index_data["paasche_index"]
-            existing.jevons_index = index_data["jevons_index"]
-            existing.cpi_transport_benchmark = index_data["cpi_transport_benchmark"]
-            existing.pct_change_daily = index_data["pct_change_daily"]
-            existing.pct_change_monthly = index_data["pct_change_monthly"]
+            existing.apix_national = float(index_data["apix_national"])
+            existing.laspeyres_index = float(index_data["laspeyres_index"])
+            existing.paasche_index = float(index_data["paasche_index"])
+            existing.jevons_index = float(index_data["jevons_index"])
+            existing.cpi_transport_benchmark = float(index_data["cpi_transport_benchmark"])
+            existing.pct_change_daily = float(index_data["pct_change_daily"])
+            existing.pct_change_monthly = float(index_data["pct_change_monthly"])
             db.commit()
             return existing
         else:
             new_idx = ApixDailyIndex(
                 date=idx_date,
-                apix_national=index_data["apix_national"],
-                laspeyres_index=index_data["laspeyres_index"],
-                paasche_index=index_data["paasche_index"],
-                jevons_index=index_data["jevons_index"],
-                cpi_transport_benchmark=index_data["cpi_transport_benchmark"],
-                pct_change_daily=index_data["pct_change_daily"],
-                pct_change_monthly=index_data["pct_change_monthly"],
-                pct_change_annual=round(index_data["pct_change_monthly"] * 1.8, 2)
+                apix_national=float(index_data["apix_national"]),
+                laspeyres_index=float(index_data["laspeyres_index"]),
+                paasche_index=float(index_data["paasche_index"]),
+                jevons_index=float(index_data["jevons_index"]),
+                cpi_transport_benchmark=float(index_data["cpi_transport_benchmark"]),
+                pct_change_daily=float(index_data["pct_change_daily"]),
+                pct_change_monthly=float(index_data["pct_change_monthly"]),
+                pct_change_annual=float(round(float(index_data["pct_change_monthly"]) * 1.8, 2))
             )
             db.add(new_idx)
             db.commit()

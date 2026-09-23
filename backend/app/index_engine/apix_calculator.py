@@ -94,16 +94,20 @@ class ApixCalculatorEngine:
             jevons_val = 100.0
 
         # General CPI Transport Benchmark (simulated macro inflation trend)
-        cpi_benchmark = round(100.0 + (fisher_val - 100.0) * 0.45, 2)
+        f_val = float(fisher_val)
+        l_val = float(laspeyres_val)
+        p_val = float(paasche_val)
+        j_val = float(jevons_val)
+        cpi_benchmark = float(round(100.0 + (f_val - 100.0) * 0.45, 2))
 
         return {
-            "apix_national": round(float(fisher_val), 2),
-            "laspeyres_index": round(float(laspeyres_val), 2),
-            "paasche_index": round(float(paasche_val), 2),
-            "jevons_index": round(float(jevons_val), 2),
-            "cpi_transport_benchmark": round(cpi_benchmark, 2),
-            "pct_change_daily": round(float(fisher_val - 100.0), 2),
-            "pct_change_monthly": round(float((fisher_val - 100.0) * 1.4), 2)
+            "apix_national": float(round(f_val, 2)),
+            "laspeyres_index": float(round(l_val, 2)),
+            "paasche_index": float(round(p_val, 2)),
+            "jevons_index": float(round(j_val, 2)),
+            "cpi_transport_benchmark": float(round(cpi_benchmark, 2)),
+            "pct_change_daily": float(round(f_val - 100.0, 2)),
+            "pct_change_monthly": float(round((f_val - 100.0) * 1.4, 2))
         }
 
 apix_engine = ApixCalculatorEngine()
